@@ -6,9 +6,9 @@
 // Staggered grid: pressure is stored at cell centre, while velocities are stored at the faces
 const rho = 997;
 const nu = 1e-6;
-const nx = 100;   //number of cells within computational domain
+const nx = 200;   //number of cells within computational domain
 const i_min = 2, i_max = i_min + nx - 1; //extents of computational domain
-const L_x = 100; //m , length of computational domain
+const L_x = 200; //m , length of computational domain
 
 // CREATE MESH
 let x = []; //array to store positions of left face of each element
@@ -40,7 +40,7 @@ for(i = 0; i < i_max + 2; i++){
 
 let elm_divs = document.getElementsByClassName('elm');
 function elm_div_opac (div) {
-  let op = Math.round(100*(p[i])/(1e5));
+  let op = Math.round(100*(p[i] - 1e5)/(1e5));
   div.style.backgroundColor = 'hsl( 280, 100%, ' + op + '%)';
 }
 
@@ -55,7 +55,7 @@ for (let i = i_min; i < i_max + 2; i++) {
   u[i] = 0;
 }
 
-// u[10] = 0.01;
+u[10] = 0;
 
 // define pressure for each getElementsByClassName
 
@@ -65,8 +65,8 @@ for (let i = i_min - 1; i < i_max + 2; i++) {
   p[i] = 1e5;
 }
 
-p[10] = 1.1e5;
-p[11] = 1.1e5;
+p[10] = 100e5;
+// p[11] = 1.1e5;
 function visualise () {
 // core of the 'u momentum discretisation' scheme. CD on the diffusion (2nd order), FD on the advection term
 
@@ -124,7 +124,6 @@ function visualise () {
       }
       pv[i] *= (1/(dxi2*L[i]));
     }
-
   }
 
   for (let i = i_min, n = 0; i < i_max + 1; i++) {
@@ -136,7 +135,7 @@ function visualise () {
   // corrector step - use pressure values to update velocities
 
   for (let i = i_min; i < i_max + 2; i++) {
-    u[i] = us[i] - (dt/rho)*(p[i] - p[i - 1])*dxi;
+    u[i] = us[i] + (dt/rho)*(p[i] - p[i - 1])*dxi;
   }
 
 //  console.log(u);
@@ -152,11 +151,11 @@ function visualise () {
     elm_divs[i].innerHTML =  Math.floor(p[i])/1000 + 'kPa <br>'+ Math.floor(1000*u[i])/1000 + 'm/s';
   }
 
-  //requestAnimationFrame(visualise);
+  requestAnimationFrame(visualise);
 
 }
 
 let viewport = document.getElementsByClassName('viewport')[0];
 viewport.addEventListener('click', visualise);
 
-// visualise();
+visualise();
