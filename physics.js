@@ -55,23 +55,24 @@ for (let i = i_min; i < i_max + 2; i++) {
   u[i] = 0;
 }
 
-u[10] = 0.01;
+// u[10] = 0.01;
 
 // define pressure for each getElementsByClassName
 
 let p = [];
 
 for (let i = i_min - 1; i < i_max + 2; i++) {
-  p[i] = 0;
+  p[i] = 1e5;
 }
 
-
+p[10] = 1.1e5;
+p[11] = 1.1e5;
 function visualise () {
 // core of the 'u momentum discretisation' scheme. CD on the diffusion (2nd order), FD on the advection term
 
 
   for(let i = i_min + 1; i < i_max + 1; i++) {
-    us[i]  = u[i] + dt*(nu*(u[i - 1] - 2*u[i] + u[i + 1])*dxi2 - u[i]*(u[i + 1] - u[i - 1])*dxi/2)
+    us[i]  = u[i] + dt*(nu*(u[i - 1] - 2*u[i] + u[i + 1])*dxi2 - u[i]*(u[i + 1] - u[i - 1])*0.5*dxi);
   }
   us[i_min] = 0;
   us[i_max + 1] = 0;
@@ -89,7 +90,7 @@ function visualise () {
   for (let i = 0; i < nx; i++) {
     L[i] = -2*dxi2;
     if(i == 0 || i == nx - 1) {
-      L[i] += 1*dxi2;
+      L[i] += 1;
     }
   }
 
@@ -100,7 +101,7 @@ function visualise () {
     n++;
   }
 
-  console.log(R);
+  // console.log(R);
   // Implement Gauss-Siedel relaxation
 
   let pv = []; //store pressure values
@@ -109,19 +110,19 @@ function visualise () {
     pv[n] = p[i];
     n++;
   }
-  console.log(pv);
+  // console.log(pv);
 
   for(let k = 0; k < 20; k++) {
     for (let i = 0; i < L.length; i++) {
       pv[i] = 0;
       pv[i] += R[i];
       if (i > 0) {
-        pv[i] -= pv [i - 1];
+        pv[i] -= dxi2*pv[i - 1];
       }
       if (i < pv.length - 1) {
-        pv[i] -= pv[i + 1];
+        pv[i] -= dxi2*pv[i + 1];
       }
-      pv[i] *= (1/L[i]);
+      pv[i] *= (1/(dxi2*L[i]));
     }
 
   }
@@ -138,10 +139,12 @@ function visualise () {
     u[i] = us[i] - (dt/rho)*(p[i] - p[i - 1])*dxi;
   }
 
-  console.log(u);
-  console.log(p);
+//  console.log(u);
+//  console.log(p);
   // boundary conditions
 
+  u[i_min - 1] = -1*u[i_min];
+  u[i_max + 1] = -1*u[i_max];
 
   for(i = i_min; i < i_max + 1; i++){
     elm_div_opac(elm_divs[i]);
