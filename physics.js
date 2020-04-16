@@ -3,7 +3,7 @@
 // Staggered grid: pressure is stored at cell centre, while velocities are stored at the faces
 const rho = 997;
 const nu = 1e-6;
-const nx = 50;   //number of cells within computational domain
+const nx = 100;   //number of cells within computational domain
 const i_min = 2, i_max = i_min + nx - 1; //extents of computational domain
 const L_x = 100; //m , length of computational domain
 
@@ -25,7 +25,7 @@ for (let i = i_min; i < i_max + 1; i++) {
 const dx = x[i_min + 1] - x[i_min]; // working with constant mesh size - TODO: adapt to variable size
 const dxi = 1/dx; // precomputing expensive values
 const dxi2 = Math.pow(dxi,2);
-const dt = 0.0001;
+const dt = 0.001;
 // console.log('x = ' + x + '\nx_m =  ' +  x_m + '\ndx = ' + dx);
 
 // define u for each element...
@@ -37,14 +37,14 @@ for (let i = i_min; i < i_max + 2; i++) {
   u[i] = 0;
 }
 
-u[i_min] = 1;
+u[10] = 5;
 
 // define pressure for each getElementsByClassName
 
 let p = [];
 
 for (let i = i_min - 1; i < i_max + 2; i++) {
-  p[i] = 0;
+  p[i] = 1e5;
 }
 
 // core of the 'u momentum discretisation' scheme. CD on the diffusion (2nd order), FD on the advection term
@@ -89,20 +89,21 @@ for (let i = i_min, n = 0; i < i_max + 1; i++) {
   n++;
 }
 console.log(pv);
-for (let i = 0; i < L.length; i++) {
 
+for(let k = 0; k < 20; k++) {
+  for (let i = 0; i < L.length; i++) {
+    pv[i] = 0;
+    pv[i] += R[i];
+    if (i > 0) {
+      pv[i] -= pv [i - 1];
+    }
+    if (i < pv.length - 1) {
+      pv[i] -= pv[i + 1];
+    }
+    pv[i] *= (1/L[i])*dxi;
+  }
 
-  pv[i] += R[i];
-  if (i > 0) {
-    pv[i] -= pv [i - 1];
-  }
-  if (i < pv.length - 1) {
-    pv[i] -= pv[i + 1];
-  }
-  pv[i] *= (1/L[i])*dxi2;
 }
-
-console.log(pv)
 
 for (let i = i_min, n = 0; i < i_max + 1; i++) {
   p[i] = pv[n];
