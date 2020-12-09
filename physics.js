@@ -6,9 +6,9 @@
 // Staggered grid: pressure is stored at cell centre, while velocities are stored at the faces
 const rho = 997;
 const nu = 1e-6;
-const nx = 200;   //number of cells within computational domain
+const nx = 20;   //number of cells within computational domain
 const i_min = 2, i_max = i_min + nx - 1; //extents of computational domain
-const L_x = 200; //m , length of computational domain
+const L_x = 20; //m , length of computational domain
 
 // CREATE MESH
 let x = []; //array to store positions of left face of each element
@@ -28,7 +28,7 @@ for (let i = i_min; i < i_max + 1; i++) {
 const dx = x[i_min + 1] - x[i_min]; // working with constant mesh size - TODO: adapt to variable size
 const dxi = 1/dx; // precomputing expensive values
 const dxi2 = Math.pow(dxi,2);
-const dt = 0.01;
+const dt = 0.1;
 // console.log('x = ' + x + '\nx_m =  ' +  x_m + '\ndx = ' + dx);
 
 let elm_container = document.getElementsByClassName('elm_container')[0];
@@ -55,7 +55,7 @@ for (let i = i_min; i < i_max + 2; i++) {
   u[i] = 0;
 }
 
-u[10] = 0;
+u[i_min + 2] = 100;
 
 // define pressure for each getElementsByClassName
 
@@ -65,7 +65,7 @@ for (let i = i_min - 1; i < i_max + 2; i++) {
   p[i] = 1e5;
 }
 
-p[10] = 100e5;
+p[10] = 1e6;
 // p[11] = 1.1e5;
 function visualise () {
 // core of the 'u momentum discretisation' scheme. CD on the diffusion (2nd order), FD on the advection term
