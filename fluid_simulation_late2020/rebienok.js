@@ -31,16 +31,34 @@ let initialiseGrid = () => {
   return matrix;
 }
 
-let v_x = initialiseGrid();
-let v_y = initialiseGrid();
+let v_x = {
+  values: initialiseGrid(),
+  values_new: initialiseGrid(),
+  targets: initialiseGrid(),
+}
 
-v_y[5][5] = 0.9;
-v_x[5][5] = 0.2;
+let v_y = {
+  values: initialiseGrid(),
+  values_new: initialiseGrid(),
+  targets: initialiseGrid(),
+}
 
-mass = initialiseGrid();
-mass[5][5] = 100;
-mass_new = initialiseGrid();
-mass_targets = initialiseGrid();
+v_y.values[5][5] = 0.9;
+v_x.values[5][5] = 0.2;
+
+let mass = {
+  values: initialiseGrid(),
+  values_new: initialiseGrid(),
+  targets: initialiseGrid(),
+  unsigned: true,
+}
+
+mass.values[5][5] = 100;
+
+console.log(mass);
+console.log(v_x);
+console.log(v_y)
+
 //in the following functions, 'quantity' is any value that can be defined on nodes in the grid (e.g. anything carried in the fluid)
 //this could be velocity, density, colour concentration, dye, temp, etc etc
 
@@ -48,9 +66,9 @@ mass_targets = initialiseGrid();
 //the advection proportions only need to be determined ONCE then applied to each relevant quantity
 //from there, the different diffusive properties of each quantity will determine how those things evolve
 
-let advect_fwd = (quantity, targets, x_comps, y_comps) => {
+let advect_fwd = (quantity, x_comps, y_comps) => {
 
-  let quantity_targets = initialiseGrid();
+  quantity.targets = initialiseGrid();
   //loop through all nodes in vector field and advect quantities to new locations.
   for (let i = 0, l = x_comps.length; i < l; i++) {
     for (let j = 0, m = x_comps[i].length; j < m; j++) {
@@ -75,10 +93,6 @@ let advect_fwd = (quantity, targets, x_comps, y_comps) => {
                           [0, 0]];
         let proportions_mag = 0;
 
-        console.log(i,j);
-        console.log(i_res_neighbours);
-        console.log(j_res_neighbours);
-        console.log(proportions);
         let target_nodes = [];
         for (let u = 0; u < i_res_neighbours.length; u++) {
           for (let v = 0; v < j_res_neighbours.length; v++) {
@@ -86,8 +100,6 @@ let advect_fwd = (quantity, targets, x_comps, y_comps) => {
             target_nodes.push({x:i_res_neighbours[u], y:j_res_neighbours[v]});
           }
         }
-
-        console.log(target_nodes);
 
         //then reverse-interpolate in i and j to work out how much of the quantity is received by each node
         let dist_sum = 0;
@@ -106,9 +118,8 @@ let advect_fwd = (quantity, targets, x_comps, y_comps) => {
         } else {
           target_nodes[0].fraction = 1;
         }
-
         //store the fractions requested by each point for later application
-        console.log(target_nodes);
+        quantity.targets[i][j] = target_nodes.slice();
       }
     }
   }
@@ -153,7 +164,6 @@ let advect_rev = (quantity, quantity_targets, x_comps, y_comps) => {
         }
       }
 
-
       //store the fractions requested from each point for later application
       for (let u = 0; u < i_res_neighbours.length; u++) {
         for (let v = 0; v < j_res_neighbours.length; v++) {
@@ -189,27 +199,47 @@ let restrictOutflow = (targets) => {
 
 //this function goes through each node for the quantity and distributes the flows according to
 //the 'quantity-targets'
-let applyFlows = (quantity, quantity_new, targets) => {
-  //step one - reset the quantity_new matrix
-  quantity_new = initialiseGrid();
-  for (let i = 0, l = targets.length; i < l; i++) {
-    for (let j = 0, m = targets.length; j < l; j++) {
-      let thisTargets = targets[i][j];
+let applyFlows = (quantity) => {
+  if (quantity.unsigned) {
+    restrictOutflow(quantity.targets);
+  }
+
+  //seed quantity.values_new matrix with current values
+  //the sub arrays must be cloned, rather than referenced
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    quantity.values_new[i] = quantity.values[i].map(elem => elem);
+  }
+
+  for (let i = 0, l = quantity.targets.length; i < l; i++) {
+    for (let j = 0, m = quantity.targets.length; j < l; j++) {
+      let thisTargets = quantity.targets[i][j];
+      let thisValue = quantity.values[i][j];
       for (let k = 0, n = thisTargets.length; k < n; k++) {
         let thisTarget = thisTargets[k];
-        let flow = thisTarget.fraction;
-        quantity_new[thisTarget.x][thisTarget.y] += flow;
-        quantity_new[i][j] -= flow;
+        let flow = thisTarget.fraction*thisValue;
+        quantity.values_new[thisTarget.x][thisTarget.y] += flow;
+        quantity.values_new[i][j] -= flow;
       }
     }
   }
 
   //update quantity matrix with new values
   //the sub arrays must be cloned, rather than referenced
-  for (let i = 0, l = quantity.length; i < l; i++) {
-    quantity[i] = quantity_new[i].map(elem => elem);
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    quantity.values[i] = quantity.values_new[i].map(elem => elem);
   }
-
 }
 
-advect_fwd(mass, mass_targets, v_x, v_y);
+advect_fwd(mass, v_x.values, v_y.values);
+applyFlows(mass);
+advect_fwd(v_x, v_x.values, v_y.values);
+applyFlows(v_x);
+advect_fwd(v_y, v_x.values, v_y.values);
+applyFlows(v_y);
+
+advect_fwd(mass, v_x.values, v_y.values);
+applyFlows(mass);
+advect_fwd(v_x, v_x.values, v_y.values);
+applyFlows(v_x);
+advect_fwd(v_y, v_x.values, v_y.values);
+applyFlows(v_y);
