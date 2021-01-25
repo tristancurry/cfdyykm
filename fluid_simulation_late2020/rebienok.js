@@ -16,8 +16,12 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 10; //number of nodes in x-direction in each grid.
-let ny = 10; //number of nodes in y-direction in each grid.
+let nx = 20; //number of nodes in x-direction in each grid.
+let ny = 20; //number of nodes in y-direction in each grid.
+
+let canvas0 = document.getElementById('canvas0');
+let ctx0 = canvas0.getContext('2d');
+
 
 let initialiseGrid = (value) => {
   let matrix = [];
@@ -34,26 +38,29 @@ let initialiseGrid = (value) => {
 let v_x = {
   values: initialiseGrid(),
   values_new: initialiseGrid(),
+  values_old: initialiseGrid(),
   targets: initialiseGrid(),
 }
 
 let v_y = {
   values: initialiseGrid(),
   values_new: initialiseGrid(),
+  values_old: initialiseGrid(),
   targets: initialiseGrid(),
+
 }
 
-v_y.values[5][5] = 0.9;
-v_x.values[5][5] = 0.2;
+v_y.values[2][2] = 1.5;
+v_x.values[2][2] = 2.2;
 
 let mass = {
-  values: initialiseGrid(50),
+  values: initialiseGrid(),
   values_new: initialiseGrid(),
   targets: initialiseGrid(),
   unsigned: true,
 }
 
-mass.values[5][5] = 100;
+mass.values[2][2] = 100;
 
 console.log(mass);
 console.log(v_x);
@@ -144,7 +151,6 @@ let advect_rev = (quantity, x_comps, y_comps) => {
       quantity.values[i_res_neighbours[1]][j_res_neighbours[0]]*(i_res - i_res_neighbours[0]))*(j_res_neighbours[1] - j_res) +
       (quantity.values[i_res_neighbours[0]][j_res_neighbours[1]]*(i_res_neighbours[1] - i_res) +
     quantity.values[i_res_neighbours[1]][j_res_neighbours[1]]*(i_res - i_res_neighbours[0]))*(j_res - j_res_neighbours[0]);
-    console.log(inter_quantity);
 
       if (i_res_neighbours[0] == i_res_neighbours[1]) {
         i_res_neighbours = [i_res];
@@ -156,11 +162,17 @@ let advect_rev = (quantity, x_comps, y_comps) => {
 
       let source_nodes = [];
 
-      if (inter_quantity != 0) {
+      let inter_sum = 0;
+      for (let u = 0; u < i_res_neighbours.length; u++) {
+        for (let v = 0; v < j_res_neighbours.length; v++) {
+          inter_sum += quantity.values[i_res_neighbours[u]][j_res_neighbours[v]];
+        }
+      }
+
+      if (inter_sum != 0) {
         for (let u = 0; u < i_res_neighbours.length; u++) {
           for (let v = 0; v < j_res_neighbours.length; v++) {
-            console.log(i_res_neighbours[u]);
-            source_nodes.push({x: i_res_neighbours[u], y: j_res_neighbours[v], fraction: inter_quantity/quantity.values[i_res_neighbours[u]][j_res_neighbours[v]]});
+            source_nodes.push({x: i_res_neighbours[u], y: j_res_neighbours[v], fraction: quantity.values[i_res_neighbours[u]][j_res_neighbours[v]]});
           }
         }
       }
@@ -201,6 +213,9 @@ let applyFlows = (quantity) => {
   //seed quantity.values_new matrix with current values
   //the sub arrays must be cloned, rather than referenced
   for (let i = 0, l = quantity.values.length; i < l; i++) {
+    if (quantity.values_old) {
+      quantity.values_old[i] = quantity.values[i].map(elem => elem);
+    }
     quantity.values_new[i] = quantity.values[i].map(elem => elem);
   }
 
@@ -224,10 +239,27 @@ let applyFlows = (quantity) => {
   }
 }
 
-advect_fwd(mass, v_x.values, v_y.values);
-advect_rev(mass, v_x.values, v_y.values);
-// applyFlows(mass);
-// advect_fwd(v_x, v_x.values, v_y.values);
-// applyFlows(v_x);
-// advect_fwd(v_y, v_x.values, v_y.values);
-// applyFlows(v_y);
+let offset = 0;
+for (let i = 0, n = 3; i < n; i++) {
+  offset = canvas0.height/n;
+  ctx0.fillStyle = 'rgb(0,0,0)';
+  ctx0.fillRect(0, i*offset, offset, offset );
+
+  for (let u = 0; u < mass.values.length; u++) {
+    for (let v = 0; v < mass.values[u].length; v++) {
+      ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]})`;
+      ctx0.fillRect(u*(offset/mass.values.length), i*offset + v*(offset/mass.values[u].length), offset/mass.values.length, offset/mass.values.length);
+    }
+  }
+  ctx0.fillStyle = 'rgb(255,0,0)';
+  ctx0.fillRect(0, i*offset, offset, 2);
+
+  advect_fwd(mass, v_x.values, v_y.values);
+  // advect_rev(mass, v_x.values, v_y.values);
+  advect_fwd(v_x, v_x.values, v_y.values);
+  advect_fwd(v_y, v_x.values, v_y.values);
+  applyFlows(mass);
+  applyFlows(v_x);
+  applyFlows(v_y);
+
+}
