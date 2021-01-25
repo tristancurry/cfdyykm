@@ -19,12 +19,12 @@ let dt_sub = dt/INTERVALS;
 let nx = 10; //number of nodes in x-direction in each grid.
 let ny = 10; //number of nodes in y-direction in each grid.
 
-let initialiseGrid = () => {
+let initialiseGrid = (value) => {
   let matrix = [];
   for (let i = 0; i < nx; i++) {
     let column = [];
     for (let j = 0; j < ny; j++) {
-      column.push(0);
+      if (!value) {column.push(0);} else {column.push(value);}
     }
     matrix.push(column);
   }
@@ -47,7 +47,7 @@ v_y.values[5][5] = 0.9;
 v_x.values[5][5] = 0.2;
 
 let mass = {
-  values: initialiseGrid(),
+  values: initialiseGrid(50),
   values_new: initialiseGrid(),
   targets: initialiseGrid(),
   unsigned: true,
@@ -89,14 +89,10 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
           j_res_neighbours = [j_res];
         }
 
-        let proportions = [[0, 0],
-                          [0, 0]];
-        let proportions_mag = 0;
 
         let target_nodes = [];
         for (let u = 0; u < i_res_neighbours.length; u++) {
           for (let v = 0; v < j_res_neighbours.length; v++) {
-            // console.log(proportions);
             target_nodes.push({x:i_res_neighbours[u], y:j_res_neighbours[v]});
           }
         }
@@ -125,7 +121,7 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
   }
 }
 
-let advect_rev = (quantity, quantity_targets, x_comps, y_comps) => {
+let advect_rev = (quantity, x_comps, y_comps) => {
   //loop through all nodes in vector field, find source value that contributes and advect quantities to new locations.
   for (let i = 0, l = x_comps.length; i < l; i++) {
     for (let j = 0, m = x_comps[i].length; j < m; j++) {
@@ -139,35 +135,33 @@ let advect_rev = (quantity, quantity_targets, x_comps, y_comps) => {
       let i_res = i + dist_x;
       let i_res_neighbours = [Math.floor(i_res), Math.ceil(i_res)];
 
+
       let j_res = j + dist_y;
       let j_res_neighbours = [Math.floor(j_res), Math.ceil(j_res)];
 
-      let proportions = [[0.25,0.25][0.25,0.25]];
-      let proportions_mag = 0;
 
-      let inter_quantity = (quantity[i_res_neighbours[0]][j_res_neighbours[0]]*(i_res_neighbours[1] - i_res) +
-      quantity[i_res_neighbours[1]][j_res_neighbours[0]]*(i_res - i_res_neighbours[0]))*(j_res_neighbours[1] - j_res) +
-      (quantity[i_res_neighbours[0]][j_res_neighbours[1]]*(i_res_neighbours[1] - i_res) +
-    quantity[i_res_neighbours[1]][j_res_neighbours[1]]*(i_res - i_res_neighbours[0]))*(j_res - j_res_neighbours[0]);
+      let inter_quantity = (quantity.values[i_res_neighbours[0]][j_res_neighbours[0]]*(i_res_neighbours[1] - i_res) +
+      quantity.values[i_res_neighbours[1]][j_res_neighbours[0]]*(i_res - i_res_neighbours[0]))*(j_res_neighbours[1] - j_res) +
+      (quantity.values[i_res_neighbours[0]][j_res_neighbours[1]]*(i_res_neighbours[1] - i_res) +
+    quantity.values[i_res_neighbours[1]][j_res_neighbours[1]]*(i_res - i_res_neighbours[0]))*(j_res - j_res_neighbours[0]);
+    console.log(inter_quantity);
 
-      for (let u = 0; u < i_res_neighbours.length; u++) {
-        for (let v = 0; v < j_res_neighbours.length; v++) {
-          proportions[u][v] = Math.sqrt(Math.pow(i_res - i_res_neighbours[u], 2) + Math.pow(j_res - j_res_neighbours[v], 2));
-          proportions_mag += proportions[u][v];
-        }
+      if (i_res_neighbours[0] == i_res_neighbours[1]) {
+        i_res_neighbours = [i_res];
       }
 
-      //normalise proportions matrix
-      for (let u = 0; u < i_res_neighbours.length; u++) {
-        for (let v = 0; v < j_res_neighbours.length; v++) {
-          proportions[u][v] = proportions[u][v]/proportions_mag;
-        }
+      if (j_res_neighbours[0] == j_res_neighbours[1]) {
+        j_res_neighbours = [j_res];
       }
 
-      //store the fractions requested from each point for later application
-      for (let u = 0; u < i_res_neighbours.length; u++) {
-        for (let v = 0; v < j_res_neighbours.length; v++) {
-          quantity_targets[i_res_neighbours[u]][j_res_neighbours[v]].push({x:i, y:j, fraction:inter_quantity*proportions[u][v]});
+      let source_nodes = [];
+
+      if (inter_quantity != 0) {
+        for (let u = 0; u < i_res_neighbours.length; u++) {
+          for (let v = 0; v < j_res_neighbours.length; v++) {
+            console.log(i_res_neighbours[u]);
+            source_nodes.push({x: i_res_neighbours[u], y: j_res_neighbours[v], fraction: inter_quantity/quantity.values[i_res_neighbours[u]][j_res_neighbours[v]]});
+          }
         }
       }
     }
@@ -231,15 +225,9 @@ let applyFlows = (quantity) => {
 }
 
 advect_fwd(mass, v_x.values, v_y.values);
-applyFlows(mass);
-advect_fwd(v_x, v_x.values, v_y.values);
-applyFlows(v_x);
-advect_fwd(v_y, v_x.values, v_y.values);
-applyFlows(v_y);
-
-advect_fwd(mass, v_x.values, v_y.values);
-applyFlows(mass);
-advect_fwd(v_x, v_x.values, v_y.values);
-applyFlows(v_x);
-advect_fwd(v_y, v_x.values, v_y.values);
-applyFlows(v_y);
+advect_rev(mass, v_x.values, v_y.values);
+// applyFlows(mass);
+// advect_fwd(v_x, v_x.values, v_y.values);
+// applyFlows(v_x);
+// advect_fwd(v_y, v_x.values, v_y.values);
+// applyFlows(v_y);
