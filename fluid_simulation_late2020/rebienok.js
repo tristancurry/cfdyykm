@@ -11,13 +11,13 @@ let dy = 0.1;
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
 
-let dt = 1;
+let dt = 0.01;
 let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 20; //number of nodes in x-direction in each grid.
-let ny = 20; //number of nodes in y-direction in each grid.
+let nx = 30; //number of nodes in x-direction in each grid.
+let ny = 30; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -50,8 +50,9 @@ let v_y = {
 
 }
 
-v_y.values[2][2] = 1.5;
-v_x.values[2][2] = 2.2;
+v_x.values[2][2] = 1;
+v_y.values[2][2] = 0.1;
+
 
 let mass = {
   values: initialiseGrid(),
@@ -60,7 +61,7 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[2][2] = 100;
+mass.values[2][2] = 1000;
 
 console.log(mass);
 console.log(v_x);
@@ -80,8 +81,8 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
   for (let i = 0, l = x_comps.length; i < l; i++) {
     for (let j = 0, m = x_comps[i].length; j < m; j++) {
       if(x_comps[i][j] != 0 || y_comps[i][j] != 0){
-        let dist_x = x_comps[i][j]*dt;
-        let dist_y = y_comps[i][j]*dt;
+        let dist_x = x_comps[i][j]*dt/dx;
+        let dist_y = y_comps[i][j]*dt/dy;
         //next - determine the nodes this (off-grid) location falls between
         //i.e. resultant i =  i + dist_x (floor and ceiling), similarly for resultant j
         let i_res = i + dist_x;
@@ -112,6 +113,7 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
             let target = target_nodes[k];
             target.dist = Math.sqrt(Math.pow(target.x - i_res, 2) + Math.pow(target.y - j_res, 2));
             dist_sum += 1/target.dist;
+
           }
 
           for (let k = 0; k < target_nodes.length; k++) {
@@ -121,6 +123,24 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
         } else {
           target_nodes[0].fraction = 1;
         }
+
+        //check for out-of-bounds targets and wrap.
+        for (let k = 0; k < target_nodes.length; k++) {
+          let target = target_nodes[k];
+
+          if (target.x > nx - 1) {
+            target.x = (target.x)%nx;
+          } else if (target.x < 0) {
+            target.x  = nx + target.x;
+          }
+
+          if (target.y > ny - 1) {
+            target.y = (target.y)%ny;
+          } else if (target.y < 0) {
+            target.y = ny + target.y;
+          }
+        }
+
         //store the fractions requested by each point for later application
         quantity.targets[i][j] = target_nodes.slice();
       }
@@ -168,6 +188,8 @@ let advect_rev = (quantity, x_comps, y_comps) => {
           inter_sum += quantity.values[i_res_neighbours[u]][j_res_neighbours[v]];
         }
       }
+
+      //TODO - work out how the inter_quantity is to be proportionately taken from the surrounding nodes.
 
       if (inter_sum != 0) {
         for (let u = 0; u < i_res_neighbours.length; u++) {
@@ -239,20 +261,18 @@ let applyFlows = (quantity) => {
   }
 }
 
-let offset = 0;
-for (let i = 0, n = 3; i < n; i++) {
-  offset = canvas0.height/n;
+
+
+let render = () => {
   ctx0.fillStyle = 'rgb(0,0,0)';
-  ctx0.fillRect(0, i*offset, offset, offset );
+  ctx0.fillRect(0, 0, canvas0.width, canvas0.height);
 
   for (let u = 0; u < mass.values.length; u++) {
     for (let v = 0; v < mass.values[u].length; v++) {
       ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]})`;
-      ctx0.fillRect(u*(offset/mass.values.length), i*offset + v*(offset/mass.values[u].length), offset/mass.values.length, offset/mass.values.length);
+      ctx0.fillRect(u*(canvas0.width/mass.values.length), v*(canvas0.height/mass.values[u].length), canvas0.width/mass.values.length, canvas0.height/mass.values.length);
     }
   }
-  ctx0.fillStyle = 'rgb(255,0,0)';
-  ctx0.fillRect(0, i*offset, offset, 2);
 
   advect_fwd(mass, v_x.values, v_y.values);
   // advect_rev(mass, v_x.values, v_y.values);
@@ -261,5 +281,7 @@ for (let i = 0, n = 3; i < n; i++) {
   applyFlows(mass);
   applyFlows(v_x);
   applyFlows(v_y);
-
+  requestAnimationFrame(render);
 }
+
+render();
