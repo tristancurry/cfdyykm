@@ -5,8 +5,8 @@
 //start with a 2D grid and work it back to 1D
 
 //need dx & dy - distance between points (metres)
-let dx = 0.1;
-let dy = 0.1;
+let dx = 0.01;
+let dy = 0.01;
 
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
@@ -16,8 +16,8 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 30; //number of nodes in x-direction in each grid.
-let ny = 30; //number of nodes in y-direction in each grid.
+let nx = 20; //number of nodes in x-direction in each grid.
+let ny = 20; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -50,18 +50,18 @@ let v_y = {
 
 }
 
-v_x.values[2][2] = 1;
-v_y.values[2][2] = 0.1;
+v_x.values[10][10] = 2.1;
+v_y.values[10][10] = 0.1;
 
 
 let mass = {
-  values: initialiseGrid(),
+  values: initialiseGrid(50),
   values_new: initialiseGrid(),
   targets: initialiseGrid(),
   unsigned: true,
 }
 
-mass.values[2][2] = 1000;
+// mass.values[2][2] = 1000;
 
 console.log(mass);
 console.log(v_x);
