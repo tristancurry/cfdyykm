@@ -16,8 +16,8 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 20; //number of nodes in x-direction in each grid.
-let ny = 20; //number of nodes in y-direction in each grid.
+let nx = 100; //number of nodes in x-direction in each grid.
+let ny = 100; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -50,8 +50,8 @@ let v_y = {
 
 }
 
-v_x.values[10][10] = 1.1;
-v_y.values[10][10] = 0;
+v_x.values[10][10] = 1;
+v_y.values[10][10] = 1.01;
 
 
 let mass = {
