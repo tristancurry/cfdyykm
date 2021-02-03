@@ -5,13 +5,13 @@
 //start with a 2D grid and work it back to 1D
 
 //need dx & dy - distance between points (metres)
-let dx = 0.01;
-let dy = 0.01;
+let dx = 1;
+let dy = 1;
 
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
 
-let dt = 0.01;
+let dt = 1;
 let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
@@ -50,8 +50,8 @@ let v_y = {
 
 }
 
-v_x.values[10][10] = 2.1;
-v_y.values[10][10] = 0.1;
+v_x.values[10][10] = 1.1;
+v_y.values[10][10] = 0;
 
 
 let mass = {
@@ -105,20 +105,20 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
           }
         }
 
-        //then reverse-interpolate in i and j to work out how much of the quantity is received by each node
+        //then 'reverse-interpolate' in i and j to work out how much of the quantity is received by each node
         let dist_sum = 0;
         if(target_nodes.length > 1) {
           for (let k = 0; k < target_nodes.length; k++) {
             //calculate distances of each node from the resultant point
             let target = target_nodes[k];
-            target.dist = Math.sqrt(Math.pow(target.x - i_res, 2) + Math.pow(target.y - j_res, 2));
+            target.dist = 1;// Math.sqrt(Math.pow(target.x - i_res, 2) + Math.pow(target.y - j_res, 2));
             dist_sum += 1/target.dist;
 
           }
 
           for (let k = 0; k < target_nodes.length; k++) {
             let target = target_nodes[k];
-            target.fraction = (1/target.dist)/dist_sum;
+            target.fraction = (1 - Math.abs(i_res - target.x)/dx)*(1 - Math.abs(j_res - target.y)/dy);
           }
         } else {
           target_nodes[0].fraction = 1;
@@ -167,10 +167,7 @@ let advect_rev = (quantity, x_comps, y_comps) => {
       let j_res_neighbours = [Math.floor(j_res), Math.ceil(j_res)];
 
 
-      let inter_quantity = (quantity.values[i_res_neighbours[0]][j_res_neighbours[0]]*(i_res_neighbours[1] - i_res) +
-      quantity.values[i_res_neighbours[1]][j_res_neighbours[0]]*(i_res - i_res_neighbours[0]))*(j_res_neighbours[1] - j_res) +
-      (quantity.values[i_res_neighbours[0]][j_res_neighbours[1]]*(i_res_neighbours[1] - i_res) +
-    quantity.values[i_res_neighbours[1]][j_res_neighbours[1]]*(i_res - i_res_neighbours[0]))*(j_res - j_res_neighbours[0]);
+
 
       if (i_res_neighbours[0] == i_res_neighbours[1]) {
         i_res_neighbours = [i_res];
@@ -182,21 +179,41 @@ let advect_rev = (quantity, x_comps, y_comps) => {
 
       let source_nodes = [];
 
-      let inter_sum = 0;
+      //TODO - work out how the inter_quantity is to be proportionately taken from the surrounding nodes.
+
       for (let u = 0; u < i_res_neighbours.length; u++) {
         for (let v = 0; v < j_res_neighbours.length; v++) {
-          inter_sum += quantity.values[i_res_neighbours[u]][j_res_neighbours[v]];
+          source_nodes.push({x: i_res_neighbours[u], y: j_res_neighbours[v], fraction: (1 - Math.abs(i_res - i_res_neighbours[u])/dx)*(1 - Math.abs(j_res - j_res_neighbours[v])/dy)});
         }
       }
 
-      //TODO - work out how the inter_quantity is to be proportionately taken from the surrounding nodes.
+      let inter_quantity = 0;
 
-      if (inter_sum != 0) {
-        for (let u = 0; u < i_res_neighbours.length; u++) {
-          for (let v = 0; v < j_res_neighbours.length; v++) {
-            source_nodes.push({x: i_res_neighbours[u], y: j_res_neighbours[v], fraction: quantity.values[i_res_neighbours[u]][j_res_neighbours[v]]});
+      for (let k = 0, n = source_nodes.length; k < n; k++) {
+        let source = source_nodes[k];
+        if (source.x > nx - 1) {
+          console.log(source.x);
+          source.x = (source.x)%nx;
+          console.log(source.x);
+
+        } else if (source.x < 0) {
+          while (source.x < 0) {
+            console.log(source.x);
+            source.x  = (nx + source.x);
+            console.log(source.x);
           }
         }
+
+        if (source.y > ny - 1) {
+          source.y = (source.y)%ny;
+        } else if (source.y < 0) {
+          source.y = ny + source.y;
+        }
+        inter_quantity += quantity.values[source.x][source.y]*source.fraction;
+        if(quantity.targets[source.x][source.y] === 0) {
+          quantity.targets[source.x][source.y] = [];
+        }
+        quantity.targets[source.x][source.y].push({x:i, y:j, fraction: source.fraction});
       }
     }
   }
@@ -277,11 +294,19 @@ let render = () => {
   advect_fwd(mass, v_x.values, v_y.values);
   // advect_rev(mass, v_x.values, v_y.values);
   advect_fwd(v_x, v_x.values, v_y.values);
+  // advect_rev(v_x, v_x.values, v_y.values);
   advect_fwd(v_y, v_x.values, v_y.values);
+  // advect_rev(v_y, v_x.values, v_y.values);
   applyFlows(mass);
   applyFlows(v_x);
   applyFlows(v_y);
   requestAnimationFrame(render);
 }
 
+  advect_fwd(mass, v_x.values, v_y.values);
+  advect_fwd(v_x, v_x.values, v_y.values);
+  advect_fwd(v_y, v_x.values, v_y.values);
+  applyFlows(mass);
+  applyFlows(v_x);
+  applyFlows(v_y);
 render();
