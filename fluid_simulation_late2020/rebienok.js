@@ -11,13 +11,13 @@ let dy = 1;
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
 
-let dt = 1;
+let dt = 0.1;
 let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 100; //number of nodes in x-direction in each grid.
-let ny = 100; //number of nodes in y-direction in each grid.
+let nx = 50; //number of nodes in x-direction in each grid.
+let ny = 1; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -39,29 +39,30 @@ let v_x = {
   values: initialiseGrid(),
   values_new: initialiseGrid(),
   values_old: initialiseGrid(),
-  targets: initialiseGrid(),
+  targets: initialiseGrid([]),
 }
 
 let v_y = {
   values: initialiseGrid(),
   values_new: initialiseGrid(),
   values_old: initialiseGrid(),
-  targets: initialiseGrid(),
+  targets: initialiseGrid([]),
 
 }
 
-v_x.values[10][10] = 1;
-v_y.values[10][10] = 1.01;
+// v_x.values[5][0] = 10.01;
+v_y.values[5][0] = 0;
 
 
 let mass = {
   values: initialiseGrid(50),
   values_new: initialiseGrid(),
-  targets: initialiseGrid(),
+  values_old: initialiseGrid(),
+  targets: initialiseGrid([]),
   unsigned: true,
 }
 
-// mass.values[2][2] = 1000;
+mass.values[24][0] = 30;
 
 console.log(mass);
 console.log(v_x);
@@ -76,11 +77,11 @@ console.log(v_y)
 
 let advect_fwd = (quantity, x_comps, y_comps) => {
 
-  quantity.targets = initialiseGrid();
+  quantity.targets = initialiseGrid([]);
   //loop through all nodes in vector field and advect quantities to new locations.
   for (let i = 0, l = x_comps.length; i < l; i++) {
     for (let j = 0, m = x_comps[i].length; j < m; j++) {
-      if(x_comps[i][j] != 0 || y_comps[i][j] != 0){
+      if(x_comps[i][j] != 0 || y_comps[i][j] != 0) {
         let dist_x = x_comps[i][j]*dt/dx;
         let dist_y = y_comps[i][j]*dt/dy;
         //next - determine the nodes this (off-grid) location falls between
@@ -131,13 +132,17 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
           if (target.x > nx - 1) {
             target.x = (target.x)%nx;
           } else if (target.x < 0) {
-            target.x  = nx + target.x;
+            while (target.x < 0) {
+              target.x  = nx + target.x;
+            }
           }
 
           if (target.y > ny - 1) {
             target.y = (target.y)%ny;
           } else if (target.y < 0) {
-            target.y = ny + target.y;
+            while (target.y < 0) {
+              target.y = ny + target.y;
+            }
           }
         }
 
@@ -160,21 +165,37 @@ let advect_rev = (quantity, x_comps, y_comps) => {
       //add this quantity to the destination node, remove quantity proportionately from each contributing source node.
 
       let i_res = i + dist_x;
+      if(i_res > nx - 1) {
+        i_res = i_res%nx;
+      } else if (i_res < 0) {
+        while (i_res < 0) {
+          i_res += nx;
+        }
+      }
       let i_res_neighbours = [Math.floor(i_res), Math.ceil(i_res)];
+      // console.log('i_res_neighbours: ' + i_res_neighbours );
+
 
 
       let j_res = j + dist_y;
+      if(j_res > ny - 1) {
+        j_res = j_res%ny;
+      } else if (j_res < 0) {
+        while (j_res < 0) {
+          j_res += ny;
+        }
+      }
       let j_res_neighbours = [Math.floor(j_res), Math.ceil(j_res)];
 
 
 
 
       if (i_res_neighbours[0] == i_res_neighbours[1]) {
-        i_res_neighbours = [i_res];
+        i_res_neighbours = [i_res_neighbours[0]];
       }
 
       if (j_res_neighbours[0] == j_res_neighbours[1]) {
-        j_res_neighbours = [j_res];
+        j_res_neighbours = [j_res_neighbours[0]];
       }
 
       let source_nodes = [];
@@ -192,22 +213,21 @@ let advect_rev = (quantity, x_comps, y_comps) => {
       for (let k = 0, n = source_nodes.length; k < n; k++) {
         let source = source_nodes[k];
         if (source.x > nx - 1) {
-          console.log(source.x);
           source.x = (source.x)%nx;
-          console.log(source.x);
+
 
         } else if (source.x < 0) {
           while (source.x < 0) {
-            console.log(source.x);
             source.x  = (nx + source.x);
-            console.log(source.x);
           }
         }
 
         if (source.y > ny - 1) {
           source.y = (source.y)%ny;
         } else if (source.y < 0) {
-          source.y = ny + source.y;
+          while (source.y < 0) {
+            source.y  = (ny + source.y);
+          }
         }
         inter_quantity += quantity.values[source.x][source.y]*source.fraction;
         if(quantity.targets[source.x][source.y] === 0) {
@@ -226,7 +246,7 @@ let advect_rev = (quantity, x_comps, y_comps) => {
 //mutate the targets matrix as we go (no need for a deep copy)
 let restrictOutflow = (targets) => {
   for (let i = 0, l = targets.length; i < l; i++) {
-    for (let j = 0, m = targets.length; j < l; j++) {
+    for (let j = 0, m = targets[i].length; j < m; j++) {
       let outflows = 0;
       let thisTargets = targets[i][j];
       for (let k = 0, n = thisTargets.length; k < n; k++) {
@@ -259,7 +279,7 @@ let applyFlows = (quantity) => {
   }
 
   for (let i = 0, l = quantity.targets.length; i < l; i++) {
-    for (let j = 0, m = quantity.targets.length; j < l; j++) {
+    for (let j = 0, m = quantity.targets[i].length; j < m; j++) {
       let thisTargets = quantity.targets[i][j];
       let thisValue = quantity.values[i][j];
       for (let k = 0, n = thisTargets.length; k < n; k++) {
@@ -278,7 +298,67 @@ let applyFlows = (quantity) => {
   }
 }
 
+let applyPressure = (quantity, quantity_factor, x_comps, y_comps) => {
+  let ax = initialiseGrid();
+  let ay = initialiseGrid();
 
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    for (let j = 0, m = quantity.values[i].length; j < m; j++) {
+      let next_x = (i + 1)%nx;
+      let next_y = (j + 1)%ny;
+
+      let force_x = quantity_factor*(quantity.values[i][j] - quantity.values[next_x][j]);
+      let force_y = quantity_factor*(quantity.values[i][j] - quantity.values[i][next_y]);
+
+      ax[i][j] += force_x;
+      ax[next_x][j] += force_x;
+      ay[i][j] += force_y;
+      ay[i][next_y] += force_y;
+    }
+  }
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    for (let j = 0, m = quantity.values[i].length; j < m; j++) {
+      x_comps[i][j] += ax[i][j];
+      y_comps[i][j] += ay[i][j];
+    }
+  }
+}
+
+let diffuse = (quantity, diffusion_factor) => {
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    for (let j = 0, m = quantity.values[i].length; j < m; j++) {
+      let n_left = i - 1;
+      let n_right = (i + 1)%nx;
+      let n_up = j - 1;
+      let n_down = (j + 1)%ny;
+
+      if (n_left < 0) {
+        n_left += nx;
+      }
+
+      if (n_up < 0) {
+        n_up += ny;
+      }
+
+      let thisTargets = quantity.targets[i][j];
+      if(quantity.values[n_left][j] != quantity.values[i][j]) {thisTargets.push({x: n_left, y: j, fraction: diffusion_factor/4});}
+      if(quantity.values[n_right][j] != quantity.values[i][j]) {thisTargets.push({x: n_right, y: j, fraction: diffusion_factor/4});}
+      if(quantity.values[i][n_up] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_up, fraction: diffusion_factor/4});}
+      if(quantity.values[i][n_down] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_down, fraction: diffusion_factor/4})};
+    }
+  }
+}
+
+let applyFriction = (x_comps, y_comps, friction_factor) => {
+  for (let i = 0, l = x_comps.length; i < l; i++) {
+    for (let j = 0, m = x_comps[i].length; j < m; j++) {
+      x_comps[i][j] *= (1 - friction_factor);
+      y_comps[i][j] *= (1 - friction_factor);
+    }
+  }
+}
+
+//TODO: create map of 'neighbour nodes' for each node - yet another nx by ny array, can be reconstructed depending on wrapping, node contents etc
 
 let render = () => {
   ctx0.fillStyle = 'rgb(0,0,0)';
@@ -287,26 +367,27 @@ let render = () => {
   for (let u = 0; u < mass.values.length; u++) {
     for (let v = 0; v < mass.values[u].length; v++) {
       ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]})`;
-      ctx0.fillRect(u*(canvas0.width/mass.values.length), v*(canvas0.height/mass.values[u].length), canvas0.width/mass.values.length, canvas0.height/mass.values.length);
+      ctx0.fillRect(u*(canvas0.width/mass.values.length), v*(canvas0.height/mass.values[u].length), canvas0.width/mass.values.length, canvas0.height/mass.values[0].length);
     }
   }
 
   advect_fwd(mass, v_x.values, v_y.values);
-  // advect_rev(mass, v_x.values, v_y.values);
   advect_fwd(v_x, v_x.values, v_y.values);
-  // advect_rev(v_x, v_x.values, v_y.values);
   advect_fwd(v_y, v_x.values, v_y.values);
+  // advect_rev(mass, v_x.values, v_y.values);
+  // advect_rev(v_x, v_x.values, v_y.values);
   // advect_rev(v_y, v_x.values, v_y.values);
+  diffuse(mass, 0.2);
+  diffuse(v_x, 0.2);
+  diffuse(v_y, 0.2);
+
   applyFlows(mass);
+
   applyFlows(v_x);
   applyFlows(v_y);
+  applyFriction(v_x.values, v_y.values, 0.06);
+  applyPressure(mass, 0.05, v_x.values, v_y.values);
   requestAnimationFrame(render);
 }
 
-  advect_fwd(mass, v_x.values, v_y.values);
-  advect_fwd(v_x, v_x.values, v_y.values);
-  advect_fwd(v_y, v_x.values, v_y.values);
-  applyFlows(mass);
-  applyFlows(v_x);
-  applyFlows(v_y);
 render();
