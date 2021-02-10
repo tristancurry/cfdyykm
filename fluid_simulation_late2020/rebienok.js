@@ -366,7 +366,7 @@ let render = () => {
 
   for (let u = 0; u < mass.values.length; u++) {
     for (let v = 0; v < mass.values[u].length; v++) {
-      ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]})`;
+      ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*v_x.values[u][v]}, ${2.5*v_y.values[u][v]})`;
       ctx0.fillRect(u*(canvas0.width/mass.values.length), v*(canvas0.height/mass.values[u].length), canvas0.width/mass.values.length, canvas0.height/mass.values[0].length);
     }
   }
@@ -377,16 +377,16 @@ let render = () => {
   // advect_rev(mass, v_x.values, v_y.values);
   // advect_rev(v_x, v_x.values, v_y.values);
   // advect_rev(v_y, v_x.values, v_y.values);
-  diffuse(mass, 0.5);
-  diffuse(v_x, 0.5);
-  diffuse(v_y, 0.5);
+  diffuse(mass, 0.3);
+  diffuse(v_x, 0.3);
+  diffuse(v_y, 0.3);
 
   applyFlows(mass);
 
   applyFlows(v_x);
   applyFlows(v_y);
   applyFriction(v_x.values, v_y.values, 0.06);
-  applyPressure(mass, 0.05, v_x.values, v_y.values);
+  applyPressure(mass, 0.1, v_x.values, v_y.values);
   requestAnimationFrame(render);
 }
 
