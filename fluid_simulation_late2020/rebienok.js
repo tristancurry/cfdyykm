@@ -16,8 +16,8 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 50; //number of nodes in x-direction in each grid.
-let ny = 1; //number of nodes in y-direction in each grid.
+let nx = 100; //number of nodes in x-direction in each grid.
+let ny = 100; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -51,7 +51,7 @@ let v_y = {
 }
 
 // v_x.values[5][0] = 10.01;
-v_y.values[5][0] = 0;
+// v_y.values[5][0] = 0;
 
 
 let mass = {
@@ -62,7 +62,7 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[24][0] = 30;
+mass.values[24][0] = 50.1;
 
 console.log(mass);
 console.log(v_x);
@@ -377,9 +377,9 @@ let render = () => {
   // advect_rev(mass, v_x.values, v_y.values);
   // advect_rev(v_x, v_x.values, v_y.values);
   // advect_rev(v_y, v_x.values, v_y.values);
-  diffuse(mass, 0.2);
-  diffuse(v_x, 0.2);
-  diffuse(v_y, 0.2);
+  diffuse(mass, 0.5);
+  diffuse(v_x, 0.5);
+  diffuse(v_y, 0.5);
 
   applyFlows(mass);
 
