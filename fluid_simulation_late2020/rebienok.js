@@ -16,8 +16,8 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 100; //number of nodes in x-direction in each grid.
-let ny = 100; //number of nodes in y-direction in each grid.
+let nx = 128; //number of nodes in x-direction in each grid.
+let ny = 8; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -50,8 +50,8 @@ let v_y = {
 
 }
 
-// v_x.values[5][0] = 10.01;
-// v_y.values[5][0] = 0;
+// v_x.values[5][5] = 10;
+// v_y.values[5][5] = 50;
 
 
 let mass = {
@@ -62,7 +62,9 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[24][0] = 50.1;
+mass.values[Math.floor(nx/2)][Math.floor(ny/2)] = 60;
+
+
 
 console.log(mass);
 console.log(v_x);
@@ -306,14 +308,20 @@ let applyPressure = (quantity, quantity_factor, x_comps, y_comps) => {
     for (let j = 0, m = quantity.values[i].length; j < m; j++) {
       let next_x = (i + 1)%nx;
       let next_y = (j + 1)%ny;
+      let prev_x = (i - 1);
+      if (prev_x < 0) {prev_x += nx;}
+      let prev_y = (j - 1);
+      if (prev_y < 0) {prev_y += ny;}
 
       let force_x = quantity_factor*(quantity.values[i][j] - quantity.values[next_x][j]);
       let force_y = quantity_factor*(quantity.values[i][j] - quantity.values[i][next_y]);
 
+      if(quantity.values[i][j] > 0) {
       ax[i][j] += force_x;
       ax[next_x][j] += force_x;
       ay[i][j] += force_y;
       ay[i][next_y] += force_y;
+      }
     }
   }
   for (let i = 0, l = quantity.values.length; i < l; i++) {
@@ -340,11 +348,12 @@ let diffuse = (quantity, diffusion_factor) => {
         n_up += ny;
       }
 
-      let thisTargets = quantity.targets[i][j];
-      if(quantity.values[n_left][j] != quantity.values[i][j]) {thisTargets.push({x: n_left, y: j, fraction: diffusion_factor/4});}
-      if(quantity.values[n_right][j] != quantity.values[i][j]) {thisTargets.push({x: n_right, y: j, fraction: diffusion_factor/4});}
-      if(quantity.values[i][n_up] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_up, fraction: diffusion_factor/4});}
-      if(quantity.values[i][n_down] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_down, fraction: diffusion_factor/4})};
+      let thisTargets = quantity.targets[i][j].slice();
+      if(quantity.values[n_left][j] !== quantity.values[i][j]) {thisTargets.push({x: n_left, y: j, fraction: diffusion_factor/4});}
+      if(quantity.values[n_right][j] !== quantity.values[i][j]) {thisTargets.push({x: n_right, y: j, fraction: diffusion_factor/4});}
+      if(quantity.values[i][n_up] !== quantity.values[i][j]) {thisTargets.push({x: i, y: n_up, fraction: diffusion_factor/4});}
+      if(quantity.values[i][n_down] !== quantity.values[i][j]) {thisTargets.push({x: i, y: n_down, fraction: diffusion_factor/4})};
+      quantity.targets[i][j] = thisTargets.slice();
     }
   }
 }
@@ -359,34 +368,37 @@ let applyFriction = (x_comps, y_comps, friction_factor) => {
 }
 
 //TODO: create map of 'neighbour nodes' for each node - yet another nx by ny array, can be reconstructed depending on wrapping, node contents etc
-
+let crom = false;
 let render = () => {
   ctx0.fillStyle = 'rgb(0,0,0)';
   ctx0.fillRect(0, 0, canvas0.width, canvas0.height);
 
   for (let u = 0; u < mass.values.length; u++) {
     for (let v = 0; v < mass.values[u].length; v++) {
-      ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*v_x.values[u][v]}, ${2.5*v_y.values[u][v]})`;
+      ctx0.fillStyle = `rgb(${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]}, ${2.5*mass.values[u][v]})`;
       ctx0.fillRect(u*(canvas0.width/mass.values.length), v*(canvas0.height/mass.values[u].length), canvas0.width/mass.values.length, canvas0.height/mass.values[0].length);
     }
   }
-
+  mass.targets = initialiseGrid([]);
   advect_fwd(mass, v_x.values, v_y.values);
   advect_fwd(v_x, v_x.values, v_y.values);
   advect_fwd(v_y, v_x.values, v_y.values);
-  // advect_rev(mass, v_x.values, v_y.values);
-  // advect_rev(v_x, v_x.values, v_y.values);
-  // advect_rev(v_y, v_x.values, v_y.values);
-  diffuse(mass, 0.3);
-  diffuse(v_x, 0.3);
-  diffuse(v_y, 0.3);
+// if(crom){
+//   advect_rev(mass, v_x.values, v_y.values);
+//   advect_rev(v_x, v_x.values, v_y.values);
+//   advect_rev(v_y, v_x.values, v_y.values);
+// }
+  diffuse(mass, 0.01);
+  diffuse(v_x, 0.01);
+  diffuse(v_y, 0.01);
 
   applyFlows(mass);
 
   applyFlows(v_x);
   applyFlows(v_y);
-  applyFriction(v_x.values, v_y.values, 0.06);
-  applyPressure(mass, 0.1, v_x.values, v_y.values);
+  applyFriction(v_x.values, v_y.values, 0.05);
+  applyPressure(mass, 0.01, v_x.values, v_y.values);
+  crom = true;
   requestAnimationFrame(render);
 }
 
