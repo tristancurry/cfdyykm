@@ -16,8 +16,8 @@ let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
 
-let nx = 128; //number of nodes in x-direction in each grid.
-let ny = 8; //number of nodes in y-direction in each grid.
+let nx = 64; //number of nodes in x-direction in each grid.
+let ny = 64; //number of nodes in y-direction in each grid.
 
 let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
@@ -50,8 +50,8 @@ let v_y = {
 
 }
 
-// v_x.values[5][5] = 10;
-// v_y.values[5][5] = 50;
+v_x.values[5][5] = 2;
+v_y.values[5][5] = 2;
 
 
 let mass = {
@@ -62,7 +62,7 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[Math.floor(nx/2)][Math.floor(ny/2)] = 60;
+mass.values[Math.floor(nx/2)][Math.floor(ny/2)] = 300;
 
 
 
@@ -383,20 +383,20 @@ let render = () => {
   advect_fwd(mass, v_x.values, v_y.values);
   advect_fwd(v_x, v_x.values, v_y.values);
   advect_fwd(v_y, v_x.values, v_y.values);
-// if(crom){
-//   advect_rev(mass, v_x.values, v_y.values);
-//   advect_rev(v_x, v_x.values, v_y.values);
-//   advect_rev(v_y, v_x.values, v_y.values);
-// }
-  diffuse(mass, 0.01);
-  diffuse(v_x, 0.01);
-  diffuse(v_y, 0.01);
+if(crom){
+  advect_rev(mass, v_x.values, v_y.values);
+  advect_rev(v_x, v_x.values, v_y.values);
+  advect_rev(v_y, v_x.values, v_y.values);
+}
+  // diffuse(mass, 0.001);
+  // diffuse(v_x, 0.001);
+  // diffuse(v_y, 0.001);
 
   applyFlows(mass);
 
   applyFlows(v_x);
   applyFlows(v_y);
-  applyFriction(v_x.values, v_y.values, 0.05);
+  // applyFriction(v_x.values, v_y.values, 0.005);
   applyPressure(mass, 0.01, v_x.values, v_y.values);
   crom = true;
   requestAnimationFrame(render);
