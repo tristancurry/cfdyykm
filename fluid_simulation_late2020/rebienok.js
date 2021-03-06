@@ -11,7 +11,7 @@ let dy = 1;
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
 
-let dt = 0.1;
+let dt = 0.01;
 let INTERVALS = 100;
 let dt_sub = dt/INTERVALS;
 
@@ -26,11 +26,21 @@ let ctx0 = canvas0.getContext('2d');
 let initialiseGrid = (value) => {
   let matrix = [];
   for (let i = 0; i < nx; i++) {
-    let column = [];
-    for (let j = 0; j < ny; j++) {
-      if (!value) {column.push(0);} else {column.push(value);}
+
+    if(!Array.isArray(value)) {
+      let column = new Float64Array(ny);
+      for (let j = 0; j < ny; j++) {
+        if (!value) {column[j] = 0;} else {column[j] = value;}
+      }
+      matrix.push(column);
+    } else {
+      let column = [];
+      for (let j = 0; j < ny; j++) {
+        if (!value) {column.push(0);} else {column.push(value);}
+      }
+      matrix.push(column);
     }
-    matrix.push(column);
+
   }
   return matrix;
 }
@@ -52,6 +62,8 @@ let v_y = {
 
 v_x.values[5][5] = 2;
 v_y.values[5][5] = 2;
+
+console.log('now' + v_y.values[5][5]);
 
 
 let mass = {
@@ -388,16 +400,15 @@ if(crom){
   advect_rev(v_x, v_x.values, v_y.values);
   advect_rev(v_y, v_x.values, v_y.values);
 }
-  // diffuse(mass, 0.001);
-  // diffuse(v_x, 0.001);
-  // diffuse(v_y, 0.001);
+  diffuse(mass, 0.1);
+  diffuse(v_x, 0.001);
+  diffuse(v_y, 0.001);
 
   applyFlows(mass);
-
   applyFlows(v_x);
   applyFlows(v_y);
   // applyFriction(v_x.values, v_y.values, 0.005);
-  applyPressure(mass, 0.01, v_x.values, v_y.values);
+  applyPressure(mass, 0.1, v_x.values, v_y.values);
   crom = true;
   requestAnimationFrame(render);
 }
