@@ -445,15 +445,15 @@ let render = () => {
   //   advect_rev(v_y, v_x.values, v_y.values);
   // }
 
-  // diffuse(mass, 0.01);
-  // diffuse(v_x, 0.0001);
-  diffuse(v_y, 0.11);
+  diffuse(mass, 0.01);
+  diffuse(v_x, 0.01);
+  diffuse(v_y, 0.01);
 
   applyFlows(mass);
   applyFlows(v_x);
   applyFlows(v_y);
   // applyFriction(v_x.values, v_y.values, 0.01);
-  applyPressure(mass, 0.001, v_x.values, v_y.values);
+  applyPressure(mass, -0.01, v_x.values, v_y.values);
   crom = true;
   requestAnimationFrame(render);
 }
