@@ -8,6 +8,9 @@
 let dx = 1;
 let dy = 1;
 
+let wrap_x = true;
+let wrap_y = true;
+
 //need dt - timestep for rendering
 //need dt_sub - timestep for calculation
 
@@ -60,8 +63,6 @@ let v_y = {
 
 }
 
-v_x.values[5][5] = 2;
-v_y.values[5][5] = 2;
 
 console.log('now' + v_y.values[5][5]);
 
@@ -74,7 +75,11 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[Math.floor(nx/2)][Math.floor(ny/2)] = 300;
+// mass.values[Math.floor(nx/2)][Math.floor(ny/2)] = 300;
+mass.values[10][10] = 50;
+v_x.values[10][10] = -20;
+v_y.values[10][10] = 0;
+
 
 
 
@@ -139,23 +144,43 @@ let advect_fwd = (quantity, x_comps, y_comps) => {
           target_nodes[0].fraction = 1;
         }
 
-        //check for out-of-bounds targets and wrap.
+        //check for out-of-bounds targets and wrap or reflect as necessary.
         for (let k = 0; k < target_nodes.length; k++) {
           let target = target_nodes[k];
 
           if (target.x > nx - 1) {
             target.x = (target.x)%nx;
+            if (wrap_x == false) {
+              target.x = nx - 1 - target.x;
+            }
           } else if (target.x < 0) {
-            while (target.x < 0) {
-              target.x  = nx + target.x;
+            if(wrap_x == true) {
+              while (target.x < 0) {
+                target.x  = nx + target.x;
+              }
+            } else {
+              while(target.x < -1*nx) {
+                target.x += nx;
+              }
+              target.x = -1*target.x;
             }
           }
 
           if (target.y > ny - 1) {
             target.y = (target.y)%ny;
+            if (wrap_y == false) {
+              target.y = ny - 1 - target.y;
+            }
           } else if (target.y < 0) {
-            while (target.y < 0) {
-              target.y = ny + target.y;
+            if (wrap_y == true) {
+              while (target.y < 0) {
+                target.y = ny + target.y;
+              }
+            } else {
+              while(target.y < -1*ny) {
+                target.y += ny;
+              }
+              target.y = -1*target.y;
             }
           }
         }
@@ -347,24 +372,43 @@ let applyPressure = (quantity, quantity_factor, x_comps, y_comps) => {
 let diffuse = (quantity, diffusion_factor) => {
   for (let i = 0, l = quantity.values.length; i < l; i++) {
     for (let j = 0, m = quantity.values[i].length; j < m; j++) {
+            let neighbours = 4;
       let n_left = i - 1;
-      let n_right = (i + 1)%nx;
+      let n_right = (i + 1);
+      if (i + 1 >= nx) {
+        if (wrap_x) { n_right = n_right%nx; }
+        else {n_right = i;
+        // neighbours--;
+        }
+      }
       let n_up = j - 1;
       let n_down = (j + 1)%ny;
+      if (j + 1 >= ny) {
+        if (wrap_y) { n_down = n_down%ny; }
+        else {n_down = j;
+        // neighbours--;
+        }
+      }
 
       if (n_left < 0) {
-        n_left += nx;
+        if (wrap_x) {n_left += nx;}
+        else {n_left = 0;
+          // neighbours--;
+        }
       }
 
       if (n_up < 0) {
-        n_up += ny;
+        if (wrap_y) {n_up += ny;}
+        else {n_up = 0;
+          // neighbours--;
+        }
       }
 
       let thisTargets = quantity.targets[i][j].slice();
-      if(quantity.values[n_left][j] !== quantity.values[i][j]) {thisTargets.push({x: n_left, y: j, fraction: diffusion_factor/4});}
-      if(quantity.values[n_right][j] !== quantity.values[i][j]) {thisTargets.push({x: n_right, y: j, fraction: diffusion_factor/4});}
-      if(quantity.values[i][n_up] !== quantity.values[i][j]) {thisTargets.push({x: i, y: n_up, fraction: diffusion_factor/4});}
-      if(quantity.values[i][n_down] !== quantity.values[i][j]) {thisTargets.push({x: i, y: n_down, fraction: diffusion_factor/4})};
+      if(quantity.values[n_left][j] != quantity.values[i][j]) {thisTargets.push({x: n_left, y: j, fraction: diffusion_factor/neighbours});}
+      if(quantity.values[n_right][j] != quantity.values[i][j]) {thisTargets.push({x: n_right, y: j, fraction: diffusion_factor/neighbours});}
+      if(quantity.values[i][n_up] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_up, fraction: diffusion_factor/neighbours});}
+      if(quantity.values[i][n_down] != quantity.values[i][j]) {thisTargets.push({x: i, y: n_down, fraction: diffusion_factor/neighbours})};
       quantity.targets[i][j] = thisTargets.slice();
     }
   }
@@ -395,20 +439,21 @@ let render = () => {
   advect_fwd(mass, v_x.values, v_y.values);
   advect_fwd(v_x, v_x.values, v_y.values);
   advect_fwd(v_y, v_x.values, v_y.values);
-if(crom){
-  advect_rev(mass, v_x.values, v_y.values);
-  advect_rev(v_x, v_x.values, v_y.values);
-  advect_rev(v_y, v_x.values, v_y.values);
-}
-  diffuse(mass, 0.1);
-  diffuse(v_x, 0.001);
-  diffuse(v_y, 0.001);
+  // if(crom){
+  //   advect_rev(mass, v_x.values, v_y.values);
+  //   advect_rev(v_x, v_x.values, v_y.values);
+  //   advect_rev(v_y, v_x.values, v_y.values);
+  // }
+
+  // diffuse(mass, 0.01);
+  // diffuse(v_x, 0.0001);
+  diffuse(v_y, 0.11);
 
   applyFlows(mass);
   applyFlows(v_x);
   applyFlows(v_y);
-  // applyFriction(v_x.values, v_y.values, 0.005);
-  applyPressure(mass, 0.1, v_x.values, v_y.values);
+  // applyFriction(v_x.values, v_y.values, 0.01);
+  applyPressure(mass, 0.001, v_x.values, v_y.values);
   crom = true;
   requestAnimationFrame(render);
 }
