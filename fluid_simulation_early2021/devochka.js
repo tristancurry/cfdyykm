@@ -1,11 +1,11 @@
 const RHO_W = 998; //kg per m^3
 
-const ELM_LENGTH = 0.3; //m
+const ELM_LENGTH = 0.1; //m
 const ELM_DIAM = 0.064; //m
 
-const dt = 0.1; //s
+const dt = 1/600; //s
 
-let INTERVALS = 1;
+let INTERVALS = 10;
 if (INTERVALS < 1) {INTERVALS = 1;}
 const dt_sub = dt/INTERVALS;
 console.log(dt_sub);
@@ -37,7 +37,7 @@ let v = {
   targets: initialiseGrid([]),
 }
 
-v.values[3] = 5;
+v.values[3] = 10;
 
 let rho = {
   values: initialiseGrid(RHO_W),
@@ -58,7 +58,7 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[3] = 3;
+// mass.values[3] = 1;
 
 let pressure = {
   values: initialiseGrid(default_mass),
@@ -160,20 +160,50 @@ let applyFlows = (quantity) => {
       let thisTarget = thisTargets[j];
 
       let flow = thisTarget.fraction*thisValue;
-      if(!quantity.unsigned) {
-        if((flow > 0 && i == l - 1) || (flow < 0 && i == 0)) {
-          quantity.values_new[thisTarget.x] -= flow;
-        }
-      } else {
-        quantity.values_new[thisTarget.x] += flow;
-      }
+      quantity.values_new[thisTarget.x] += flow;
       quantity.values_new[i] -= flow;
     }
+    if (!quantity.unsigned) {
+      if((i == 0 && quantity.values_new < 0)||(i == l - 1 && quantity.values_new[i] > 0)) {
+        // quantity.values_new[i] *= -1;
+      }
+    }
   }
-
   //update quantity vector with new values
   //the array must be cloned, rather than referenced
   quantity.values = quantity.values_new.map(elem => elem);
+}
+
+let applyPressure = (quantity, quantity_factor, velocity) => {
+  let ax = initialiseGrid();
+  let ay = initialiseGrid();
+
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+
+    let next_x = (i + 1);
+    if (next_x >= l) {next_x = l - 1;}
+
+    let prev_x = (i - 1);
+    if (prev_x < 0) {prev_x = 0;}
+    let force_x = quantity_factor*(quantity.values[i] - quantity.values[next_x])/INTERVALS;
+
+    if(quantity.values[i] > 0) {
+    ax[i] += force_x;
+    ax[next_x] += force_x;
+    }
+  }
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+    let next_x = (i + 1);
+    if (next_x >= l) {next_x = l - 1;}
+    velocity.values[i] += ax[i];
+    velocity.values[next_x] += ax[next_x];
+  }
+}
+
+let applyFriction = (velocity, friction_factor) => {
+  for (let i = 0, l = velocity.values.length; i < l; i++) {
+    velocity.values[i] *= Math.pow(1 - friction_factor, 1/INTERVALS);
+  }
 }
 
 //
@@ -182,7 +212,7 @@ let render = () => {
   ctx0.fillRect(0, 0, canvas0.width, canvas0.height);
 
   for (let u = 0; u < mass.values.length; u++) {
-      ctx0.fillStyle = `rgb(${128*mass.values[u]}, ${128*mass.values[u]}, ${128*mass.values[u]})`;
+      ctx0.fillStyle = `rgb(${360*mass.values[u]}, ${360*mass.values[u]}, ${360*mass.values[u]})`;
       ctx0.fillRect(u*(canvas0.width/mass.values.length), 0, canvas0.width/mass.values.length, canvas0.height);
   }
 }
@@ -196,6 +226,9 @@ let animate = () => {
     advect_fwd(v, v, dt_sub);
     applyFlows(mass);
     applyFlows(v);
+
+    // applyPressure(mass, 10, v);
+    // applyFriction(v, 0.002);
   }
 
   render();
