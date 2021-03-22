@@ -3,9 +3,9 @@ const RHO_W = 998; //kg per m^3
 const ELM_LENGTH = 0.1; //m
 const ELM_DIAM = 0.064; //m
 
-const dt = 1/600; //s
+const dt = 1/60; //s
 
-let INTERVALS = 10;
+let INTERVALS = 1;
 if (INTERVALS < 1) {INTERVALS = 1;}
 const dt_sub = dt/INTERVALS;
 console.log(dt_sub);
@@ -37,7 +37,7 @@ let v = {
   targets: initialiseGrid([]),
 }
 
-v.values[3] = 10;
+v.values[3] = 0;
 
 let rho = {
   values: initialiseGrid(RHO_W),
@@ -61,12 +61,14 @@ let mass = {
 // mass.values[3] = 1;
 
 let pressure = {
-  values: initialiseGrid(default_mass),
+  values: initialiseGrid(PRESSURE_W),
   values_new: initialiseGrid(),
   values_old: initialiseGrid(),
   targets: initialiseGrid([]),
   unsigned: true,
 }
+
+pressure.values[3] = 1.1e5;
 
 let temp = {
   values: initialiseGrid(default_mass),
@@ -100,17 +102,26 @@ let advect_fwd = (quantity, velocity, delta_t) => {
       if (neighbours[0] == neighbours[1]) {
         neighbours = [neighbours[0]];
       }
-
+      let neighbour_mass = 0;
+      for (let u = 0; u < neighbours.length; u++) {
+        neighbour_mass += mass.values[neighbours[u]];
+      }
       let target_nodes = [];
 
       for (let u = 0; u < neighbours.length; u++) {
           //find how far away the target node is from the effective node and use to apportion the advected quantity
-          let frac = 1 - Math.abs(node_res - neighbours[u]);
+          let frac_d = 1 - Math.abs(node_res - neighbours[u]);
           //check if target is 'out of bounds' and handle appropriately.
           //This would ordinarily mean checking downstream connected pipes and seeing where in those it ends up
           //If there's a wall instead, simply move the fluid as far as possible and then handling reflection/attenuation later
           if (neighbours[u] >= l) { neighbours[u] = l - 1; }
           else if (neighbours[u] < 0) { neighbours[u] = 0; }
+
+          //now find the fraction based on the neigbours' fractions of the total mass of the neighbour nodes
+          let frac_m = mass.values[neighbours[u]]/neighbour_mass;
+          console.log(mass.values[neighbours[u]]);
+
+          let frac = 0.5*(frac_m + frac_d)
           target_nodes.push({x:neighbours[u], fraction: frac});
       }
       quantity.targets[i] = target_nodes.slice();
@@ -127,8 +138,13 @@ let restrictOutflow = (targets) => {
   for (let i = 0, l = targets.length; i < l; i++) {
     let outflows = 0;
     let thisTargets = targets[i];
-    for(let j = 0, m = thisTargets.length; j < m; j++) {
-      outflows += thisTargets[j].fraction;
+
+    if(targets[i].length > 0) {
+
+      for(let j = 0, m = thisTargets.length; j < m; j++) {
+
+        outflows += thisTargets[j].fraction;
+      }
     }
     if (outflows > 1) {
       //normalise the outflows
@@ -188,8 +204,8 @@ let applyPressure = (quantity, quantity_factor, velocity) => {
     let force_x = quantity_factor*(quantity.values[i] - quantity.values[next_x])/INTERVALS;
 
     if(quantity.values[i] > 0) {
-    ax[i] += force_x;
-    ax[next_x] += force_x;
+    ax[i] += force_x/mass.values[i];
+    ax[next_x] += force_x/mass.values[next_x];
     }
   }
   for (let i = 0, l = quantity.values.length; i < l; i++) {
@@ -212,27 +228,28 @@ let render = () => {
   ctx0.fillRect(0, 0, canvas0.width, canvas0.height);
 
   for (let u = 0; u < mass.values.length; u++) {
-      ctx0.fillStyle = `rgb(${360*mass.values[u]}, ${360*mass.values[u]}, ${360*mass.values[u]})`;
+      ctx0.fillStyle = `rgb(${pressure.values[u]/1000}, ${pressure.values[u]/1000}, ${pressure.values[u]/1000})`;
       ctx0.fillRect(u*(canvas0.width/mass.values.length), 0, canvas0.width/mass.values.length, canvas0.height);
   }
 }
 
 let animate = () => {
   for (let i = 0; i < INTERVALS; i++) {
-    mass.targets = initialiseGrid([]);
+    pressure.targets = initialiseGrid([]);
     v.targets = initialiseGrid([]);
 
-    advect_fwd(mass, v, dt_sub);
+    advect_fwd(pressure, v, dt_sub);
     advect_fwd(v, v, dt_sub);
-    applyFlows(mass);
+    applyFlows(pressure);
     applyFlows(v);
 
-    // applyPressure(mass, 10, v);
+    applyPressure(pressure, 0.01, v);
     // applyFriction(v, 0.002);
   }
 
   render();
-  requestAnimationFrame(animate);
+  // requestAnimationFrame(animate);
 }
 
+animate();
 animate();
