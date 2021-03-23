@@ -1,11 +1,11 @@
 const RHO_W = 998; //kg per m^3
 
-const ELM_LENGTH = 0.1; //m
+const ELM_LENGTH = 1; //m
 const ELM_DIAM = 0.064; //m
 
 const dt = 1/60; //s
 
-let INTERVALS = 1;
+let INTERVALS = 10;
 if (INTERVALS < 1) {INTERVALS = 1;}
 const dt_sub = dt/INTERVALS;
 console.log(dt_sub);
@@ -58,7 +58,7 @@ let mass = {
   unsigned: true,
 }
 
-// mass.values[3] = 1;
+mass.values[5] = 0.1;
 
 let pressure = {
   values: initialiseGrid(PRESSURE_W),
@@ -68,7 +68,7 @@ let pressure = {
   unsigned: true,
 }
 
-pressure.values[3] = 1.1e5;
+pressure.values[1] = 1.1e5;
 
 let temp = {
   values: initialiseGrid(default_mass),
@@ -104,24 +104,24 @@ let advect_fwd = (quantity, velocity, delta_t) => {
       }
       let neighbour_mass = 0;
       for (let u = 0; u < neighbours.length; u++) {
+        if (neighbours[u] >= l) { neighbours[u] = l - 1; }
+        else if (neighbours[u] < 0) { neighbours[u] = 0; }
         neighbour_mass += mass.values[neighbours[u]];
       }
       let target_nodes = [];
 
       for (let u = 0; u < neighbours.length; u++) {
           //find how far away the target node is from the effective node and use to apportion the advected quantity
+
           let frac_d = 1 - Math.abs(node_res - neighbours[u]);
           //check if target is 'out of bounds' and handle appropriately.
           //This would ordinarily mean checking downstream connected pipes and seeing where in those it ends up
           //If there's a wall instead, simply move the fluid as far as possible and then handling reflection/attenuation later
-          if (neighbours[u] >= l) { neighbours[u] = l - 1; }
-          else if (neighbours[u] < 0) { neighbours[u] = 0; }
+
 
           //now find the fraction based on the neigbours' fractions of the total mass of the neighbour nodes
           let frac_m = mass.values[neighbours[u]]/neighbour_mass;
-          console.log(mass.values[neighbours[u]]);
-
-          let frac = 0.5*(frac_m + frac_d)
+          let frac = 0.5*(frac_m + frac_d);
           target_nodes.push({x:neighbours[u], fraction: frac});
       }
       quantity.targets[i] = target_nodes.slice();
@@ -155,7 +155,7 @@ let restrictOutflow = (targets) => {
   }
 }
 
-let applyFlows = (quantity) => {
+let applyFlows = (quantity, avg) => {
   if (quantity.unsigned) {
     restrictOutflow(quantity.targets);
   }
@@ -176,12 +176,19 @@ let applyFlows = (quantity) => {
       let thisTarget = thisTargets[j];
 
       let flow = thisTarget.fraction*thisValue;
-      quantity.values_new[thisTarget.x] += flow;
-      quantity.values_new[i] -= flow;
+      if(avg) {
+        let frac_m = thisTarget.fraction*mass.values[i]/(mass.values[thisTarget.x] + thisTarget.fraction*mass.values[i]);
+        console.log(frac_m);
+        quantity.values_new[thisTarget.x] = frac_m*thisValue + (1 - frac_m)*quantity.values_new[thisTarget.x];
+        quantity.values_new[i] = (1 - thisTarget.fraction)*thisValue;
+      } else {
+        quantity.values_new[thisTarget.x] += flow;
+        quantity.values_new[i] -= flow;
+      }
     }
     if (!quantity.unsigned) {
       if((i == 0 && quantity.values_new < 0)||(i == l - 1 && quantity.values_new[i] > 0)) {
-        // quantity.values_new[i] *= -1;
+        quantity.values_new[i] *= -1;
       }
     }
   }
@@ -211,8 +218,8 @@ let applyPressure = (quantity, quantity_factor, velocity) => {
   for (let i = 0, l = quantity.values.length; i < l; i++) {
     let next_x = (i + 1);
     if (next_x >= l) {next_x = l - 1;}
-    velocity.values[i] += ax[i];
-    velocity.values[next_x] += ax[next_x];
+    velocity.values[i] += ax[i]*dt_sub;
+    velocity.values[next_x] += ax[next_x]*dt_sub;
   }
 }
 
@@ -243,13 +250,12 @@ let animate = () => {
     applyFlows(pressure);
     applyFlows(v);
 
-    applyPressure(pressure, 0.01, v);
-    // applyFriction(v, 0.002);
+    applyPressure(pressure, 0.001, v);
+    // applyFriction(v, 0.0);
   }
 
   render();
-  // requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
 }
 
-animate();
 animate();
