@@ -1,11 +1,11 @@
 const RHO_W = 998; //kg per m^3
 
-const ELM_LENGTH = 1; //m
+const ELM_LENGTH = 0.1; //m
 const ELM_DIAM = 0.064; //m
 
 const dt = 1/60; //s
 
-let INTERVALS = 10;
+let INTERVALS = 1;
 if (INTERVALS < 1) {INTERVALS = 1;}
 const dt_sub = dt/INTERVALS;
 console.log(dt_sub);
@@ -16,7 +16,7 @@ let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
 
 // set up 'mesh' for a test pipe that is 10m long.
-let pipe_length = 100;
+let pipe_length = 10;
 let pipe_nodes = Math.floor(pipe_length/ELM_LENGTH);
 pipe_length = pipe_nodes*ELM_LENGTH;
 
@@ -37,7 +37,7 @@ let v = {
   targets: initialiseGrid([]),
 }
 
-v.values[3] = 1;
+// v.values[3] = 20;
 
 let rho = {
   values: initialiseGrid(RHO_W),
@@ -49,7 +49,7 @@ let rho = {
 
 //replace with function to calculate mass as needed from dynamic quantities
 let default_mass = Math.PI*Math.pow(0.5*ELM_DIAM,2)*ELM_LENGTH*RHO_W;
-
+console.log(default_mass);
 let mass = {
   values: initialiseGrid(default_mass),
   values_new: initialiseGrid(),
@@ -57,8 +57,8 @@ let mass = {
   targets: initialiseGrid([]),
   unsigned: true,
 }
-
-// mass.values[5] = 0.1;
+console.log(mass.values);
+mass.values[5] = 0.4;
 
 let pressure = {
   values: initialiseGrid(PRESSURE_W),
@@ -121,7 +121,7 @@ let advect_fwd = (quantity, velocity, delta_t) => {
 
           //now find the fraction based on the neigbours' fractions of the total mass of the neighbour nodes
           let frac_m = mass.values[neighbours[u]]/neighbour_mass;
-          let frac = 0.5*(frac_m + frac_d);
+          let frac = 0.5*frac_d;
           target_nodes.push({x:neighbours[u], fraction: frac});
       }
       quantity.targets[i] = target_nodes.slice();
@@ -229,34 +229,42 @@ let applyFriction = (velocity, friction_factor) => {
   }
 }
 
-let diffuse = (quantity, diff_factor) => {
+let diffuse = (quantity, diff_factor, time_step) => {
   for (let i = 0, l = quantity.values.length; i < l; i++) {
+    let next_x = i + i;
+    let prev_x = i - 1;
+    if (i == l - 1) {next_x = l - 1;}
+    if (i == 0) {prev_x = 0;}
+
+    quantity.values[i] = quantity.values[i] + time_step*diff_factor*(-1*quantity.values_old[i] + 0.5*quantity.values_old[prev_x] + 0.5*quantity.values_old[next_x]);
   }
 }
 
 //
 let render = () => {
   ctx0.fillStyle = 'rgb(0,0,0)';
-  ctx0.fillRect(0, 0, canvas0.width, canvas0.height);
+  ctx0.clearRect(0, 0, canvas0.width, canvas0.height);
 
   for (let u = 0; u < mass.values.length; u++) {
-      ctx0.fillStyle = `rgb(${pressure.values[u]/1000}, ${pressure.values[u]/1000}, ${pressure.values[u]/1000})`;
+      ctx0.fillStyle = `rgb(${(128/default_mass)*mass.values[u]}, ${(128/default_mass)*mass.values[u]}, ${(128/default_mass)*mass.values[u]})`;
       ctx0.fillRect(u*(canvas0.width/mass.values.length), 0, canvas0.width/mass.values.length, canvas0.height);
   }
 }
 
 let animate = () => {
   for (let i = 0; i < INTERVALS; i++) {
-    pressure.targets = initialiseGrid([]);
+    mass.targets = initialiseGrid([]);
     v.targets = initialiseGrid([]);
 
-    advect_fwd(pressure, v, dt_sub);
+    advect_fwd(mass, v, dt_sub);
     advect_fwd(v, v, dt_sub);
-    applyFlows(pressure);
+    applyFlows(mass);
     applyFlows(v);
+    diffuse(mass, 0.000000000000001, dt_sub);
+    // diffuse(v, 0.01);
 
-    applyPressure(pressure, 0.00000001, v);
-    applyFriction(v, 0.9);
+    // applyPressure(mass, 100, v);
+    // applyFriction(v, 0.2);
   }
 
   render();
