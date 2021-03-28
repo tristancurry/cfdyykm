@@ -16,7 +16,7 @@ let canvas0 = document.getElementById('canvas0');
 let ctx0 = canvas0.getContext('2d');
 
 // set up 'mesh' for a test pipe that is 10m long.
-let pipe_length = 10;
+let pipe_length = 100;
 let pipe_nodes = Math.floor(pipe_length/ELM_LENGTH);
 pipe_length = pipe_nodes*ELM_LENGTH;
 
@@ -37,7 +37,7 @@ let v = {
   targets: initialiseGrid([]),
 }
 
-v.values[3] = 0;
+v.values[3] = 1;
 
 let rho = {
   values: initialiseGrid(RHO_W),
@@ -58,7 +58,7 @@ let mass = {
   unsigned: true,
 }
 
-mass.values[5] = 0.1;
+// mass.values[5] = 0.1;
 
 let pressure = {
   values: initialiseGrid(PRESSURE_W),
@@ -68,7 +68,7 @@ let pressure = {
   unsigned: true,
 }
 
-pressure.values[1] = 1.1e5;
+// pressure.values[1] = 1.1e5;
 
 let temp = {
   values: initialiseGrid(default_mass),
@@ -229,6 +229,11 @@ let applyFriction = (velocity, friction_factor) => {
   }
 }
 
+let diffuse = (quantity, diff_factor) => {
+  for (let i = 0, l = quantity.values.length; i < l; i++) {
+  }
+}
+
 //
 let render = () => {
   ctx0.fillStyle = 'rgb(0,0,0)';
@@ -250,8 +255,8 @@ let animate = () => {
     applyFlows(pressure);
     applyFlows(v);
 
-    applyPressure(pressure, 0.001, v);
-    // applyFriction(v, 0.0);
+    applyPressure(pressure, 0.00000001, v);
+    applyFriction(v, 0.9);
   }
 
   render();
